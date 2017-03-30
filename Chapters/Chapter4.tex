@@ -12,29 +12,95 @@ This overall architecture can be decomposed into a few highly cohesive modules.E
 \section{Modules}
 \subsection{Identifying computation expressions}
 
-This module is responsible for the tagging of array indexing operations. It does this by connecting the multiple instructions that make up an indexing expression and tagging them as one basic block.
+This module is responsible for identification of array indexing operations. It does this by connecting the multiple instructions that make up an indexing expression and grouping them as one basic block.
 
-It repeats the process for all the indexing expressions and adds the meta data only if the indexing expression is on the LHS.
-
-Meta data is one of the ways by which information can be passed between passes in LLVM. Here, we use meta data about the indexing expression such as 
+It repeats the process for all the instructions and returns a list of such expressions.
 
 \begin{algorithm}
-	\caption{Detecting indexed sequences}
+	\caption{Identifying indexed sequences}
 	\begin{algorithmic}
-		
-		\STATE $V \leftarrow$ Empty vector of indexing expressions
+		\STATE $V \leftarrow$ Empty vector
 		\FOR{\textbf{each} $getElementPtrInst$}
 		\STATE $dominantLoad \leftarrow findDominantLoad()$
 		\STATE $dominatedLoad \leftarrow findDominatedLoad()$
-		\IF {$dominantLoad \neq $ null  AND $dominatedLoad \neq $ null}
+		\IF {$dominantLoad \neq $ null AND $dominatedLoad \neq $ null}
 		\STATE $V.push(indexed expressions)$
 		\ENDIF
 		\ENDFOR
 		\RETURN $V$
+	\end{algorithmic}
+\end{algorithm}
+
+
+\subsection{Annotate Computation Expressions}
+
+Once we have identified the necessary expressions, we then annotate them with useful meta data. It is one of the ways through which information is sent across passes. We use this to tag two pieces of meta data, namely
+
+\begin{itemize}
+	\item Type of indexed expression
+	\item Initial value of an indexed expression
+\end{itemize}
+
+
+\begin{algorithm}
+	\caption{Initial value calculation}
+	\begin{algorithmic}
+		
+		\FOR{\textbf{each} $GEPInstruction$}
+		\STATE $dominantLoad \leftarrow findDominantLoad()$
+		
+		\FOR{\textbf{each} instruction \textbf{between} $dominantLoad$ AND $GEPInstruction$}
+		\IF {\textbf{type of}instruction $==$ arithmetic Op}
+		\IF {operand $==$ constant}
+		\RETURN constant
+		\ENDIF
+		\ENDIF
+		\RETURN 0
+		\ENDFOR
+		\ENDFOR
 		
 	\end{algorithmic}
 \end{algorithm}
 
+\begin{algorithm}
+	\caption{Annotate computation expressions}
+	\begin{algorithmic}
+		
+		\STATE \textbf{Input:} Vector of indexed expressions $V$
+		
+		\FOR{\textbf{each} indexed expression \textbf{in} $V$}
+		\STATE $node \leftarrow getSuccessor()$
+		
+		\IF {\textbf{typeof} node $==$ load}
+		\STATE Tag as LHS
+		\STATE $initialValue \leftarrow getIntialValue()$
+		\STATE Tag initialValue to indexed expression
+		\ENDIF
+		\ENDFOR
+		\RETURN V
+		
+	\end{algorithmic}
+\end{algorithm}
+
+\subsection{Reassociate Expressions}
+
+The optimization work begins with this phase. We hoist the LHS indexed expressions out of the loop into new registers. After hoisting, these are then initialized with the value retrieved from the meta data attached earlier. We then proceed to add re-associating  expressions i.e\ the swap instructions between the registers. 
+
+
+
+\begin{algorithm}
+	\caption{Re-associating expressions}
+	\begin{algorithmic}
+		
+		\STATE Create a basic block above the loop header
+		\FOR{\textbf{each} RHS indexed expression}
+		\STATE create a register in the hoisted block
+		\STATE Get initial value of sequence from meta data
+		\STATE load value into register
+		\ENDFOR
+		
+	\end{algorithmic}
+\end{algorithm}
 
 
 
