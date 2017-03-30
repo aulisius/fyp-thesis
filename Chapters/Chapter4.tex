@@ -1,48 +1,14 @@
 % Chapter 4
 \chapter{SYSTEM DESIGN} % All Chapter headings in ALL CAPS
 
+\section{Overall Architecture}
+The goal of this project is to build a module that facilitates the necessary optimizations pertaining to predictive commoning. This entails a few key components which are diagrammatically represented in Figure 4.1.
+\newline
 
-\section{Components in the project}
-\subsection{Hardware Components}
-\begin{verbatim}
-1. Raspberry pi microcomputer
-2. L298n motor driver
-3. Robot chassis
-4. Wheels 
-5. 12V battery
-6. Male-female connecting wires
-7. Wi-Fi modem/ router
-8. Portable charger
-9. 3G dongle
-10. Microsoft Kinect 
-11. Raspberry Pi camera module
-\end{verbatim}
-\subsection{Software Components}
-\begin{verbatim}
-1. Raspbian OS (Linux flavor for RPI)
-2. Microsoft Kinect SDK 
-3. Microsoft visual studio VNC server
-4. SSH (Putty)
-5. XRDP (remote desktop) VNC viewer 
-6. Terminal emulator for android 
-\end{verbatim}
-\subsection{Programs}
-\begin{verbatim}
-a) Python program to move robot in the following directions:
-1. Left
-2. Right
-3. Forward
-4. Backward
-5. Circular manner
-b) Gesture detection and processing for the Kinect:
-1. Swipe left
-2. Swipe right
-3. Mouse control 
-4. Swipe up
-5. Swipe down
-6. Circle
-c) C# SSH Connection 
-\end{verbatim}
+The first component deals with identifying what parts of the code will be targeted for the optimization. The LLVM API provides interfaces to identify and target code i.e.\ it helps to target only loops instead of running through the entire program.
+The primary type of data that flows from the game simulator component
+to the algorithm are the ima
+
 
 \section{Technology used}
 \subsection{Raspberry-pi}
