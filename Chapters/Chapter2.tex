@@ -1,0 +1,9 @@
+% Chapter 2
+\chapter{RELATED WORK} % Chapter Title in ALL CAPSacs
+Loops are a common target of various compiler optimization techniques. LLVM itself by default supports upto 10 optimizations targeted at loops. But there still is a lot left to be done especially in the area of reducing data accesses within the loops.
+
+In [5], it discusses about improving the data locality. It is achieved by loop transformation algorithm which is based on two concepts: a mathematical formulation of reuse and locality, and a loop transformation theory that unifies the various transforms as unimodular matrix transformations. The algorithm is successful in optimizing codes such as matrix multiplication, successive over-relaxation (SOR), LU decomposition without pivoting, and Givens QR factorization. Performance evaluation indicates that locality optimization is especially crucial for scaling up the performance of parallel code.
+
+Another style of optimization is with regard to invariants in a loop. LLVM includes ‘loop invariant code motion’ but [4] focuses on algebraic invariants found through a data-driven approach. The task of generating loop invariants lies at the heart of any program verification technique. A wide variety of techniques have been developed for generating linear invariants, including methods based on abstract interpretation and constraint solving among others. Recently, researchers have also applied these techniques to the generation of non-linear loop invariants. These techniques discover algebraic invariants.
+
+Predictive commoning is a rather new approach applied in optimising loops by combining and modifying two earlier known methods namely, ’Common Subexpression Elimination’ and ’Loop-Invariant Code Motion’. It involves predicting whether array accesses will be reused in subsequent iterations and then tries to optimize those accesses by promoting them to registers.

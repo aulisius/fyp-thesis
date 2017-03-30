@@ -1,0 +1,31 @@
+% Chapter 3
+
+\chapter{REQUIREMENTS ANALYSIS} % All Chapter Headings in ALL CAPS
+
+\section{Requirements}
+\subsection{LLVM}
+\textbf{Hardware Requirements}
+\begin{verbatim}
+1. Disk space of 15-20 GB for Debug build of LLVM and CLANG
+2. Pentium or up processor
+3. 32-bit ABI capable processor
+4. x86 / ARM / amd64 / PowerPC architecture
+\end{verbatim}
+\textbf{Software Requirements}
+\begin{verbatim}
+1) Linux with kernel version > 4 / Cygwin on Windows
+2) GNU Make	3.79, 3.79.1 - Makefile/build processor
+3) GCC	>=4.8.0	C/C++ -  compiler
+4) python	>=2.7 -	Automated test suite
+5) zlib	>=1.2.3.4 -	Compression library 
+6) Standard Linux/Unix build utilities
+\end{verbatim}
+\textbf{Functional Requirements for the optimization Module}
+\begin{verbatim}
+1) The code that is optimized must be compiled with an additional flag, one for each additional pass
+2) Array access should be inside a loop, with scope for predictive commoning to be applied
+3) The optimized IR representation should have lesser loads and stores, with first iteration having been hoisted out of the loop body, and the remaining loads promoted to registers
+\end{verbatim}
+\subsection{Analysis}
+The optimization module, compiled from source at the host with matching CLANG, OPT utilities, should apply the predictive commoning to the input code. LLVM is chosen since it has a reliable class reference superior to it's compiler conterparts. The optimizing passes approach neccesitates that we write three distinct passes that accomplish predictive commoning.  we require a modern host C++ toolchain, both compiler and standard library, in order to build LLVM.
+]
