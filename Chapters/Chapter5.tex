@@ -63,7 +63,27 @@ The two modules are implemented in three passes, of which the first pass alone c
 \texttt{setAllMetaData()} function. The \texttt{MDNode::get()} function is used to retrieve the text Metadata node needed to annotate the expresssions, using the \texttt{ setUsersMetadata(dominant, gepIT, deadInst)} function call. These steps are all iteratively done by invoking the \texttt{runOnLoop()} function. 
 
 \subsection{Reassociating Expressions}
-The second pass is run on each function, and it hoists the indexed expressions out of the loop and adds a new basic block, to add the swapping instructions at the end. 
+The second pass is run on each function, and it hoists the indexed expressions out of the loop and adds a new basic block, to add the swapping instructions at the end. On finding the loop containing blocks, we get the annotations by using the \texttt{instr->getMetadata()} function. 
+
+By ensuring that the annotations are what we require, we create a new basic block, and also hoist the instructions out of the loop. \texttt{builder.CreateAlloca()} function is used to create a new allocation for the hoisted first iteration value. The old loads are collected, and pushed in a vector. Once the new loads with array access eliminated are construcuted, all the old loads are replaced with the new loads. 
+
+\texttt{CreateAlignedStore} is used to create the replacing store instructions that will be used to create the swapping block at the bottom of the loop body. 
+
+\begin{lstlisting}
+IRBuilder<> loopBuilder(lbody, lbody->getFirstInsertionPt());
+int i = 0;
+for (auto it : newAllocs) {
+auto newLoad = loopBuilder.CreateAlignedLoad(it, 4);
+oldLoads[i]->replaceAllUsesWith(newLoad);
+i++;
+}
+
+\end{lstlisting}
+\hspace{55pt} \textbf{Replacing the instructions with IRBuilder}
+
+\section{Removal of Dead Instructions}
+Once the two initial passes are done, we eliminate the dead instructions by eliminating its uses and then removing it using the \texttt{i->eraseFromParent()} function call.
+
 \section{Software Implementation Flow}
 
 \begin{figure}[H]

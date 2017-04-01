@@ -5,9 +5,17 @@
 The goal of this project is to build a module that facilitates the necessary optimizations pertaining to predictive commoning. This entails a few key modules which are diagrammatically represented in Figure 4.1.
 \newline
 
-The first module deals with identifying what parts of the code will be targeted for the optimization. The LLVM API provides interfaces to identify and target code i.e.\ it helps to target only loops instead of running through the entire program. 
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.45]{block.png}
+	\caption{Architecture Diagram}
+	\label{ArchDia}	
+\end{figure}
 
-This overall architecture can be decomposed into a few highly cohesive modules.Each module is explained in detail in the following section.
+
+The first module deals with identifying what parts of the code will be targeted for the optimization. The LLVM API provides interfaces to identify and target code i.e.\ it helps to target only loops instead of running through the entire program. \\ 
+
+This overall architecture can be decomposed into a few highly cohesive modules. Each module is explained in detail in the following section.
 
 \section{Modules}
 \subsection{Identifying computation expressions}
@@ -85,23 +93,36 @@ Once we have identified the necessary expressions, we then annotate them with us
 \subsection{Reassociate Expressions}
 
 The optimization work begins with this phase. We hoist the LHS indexed expressions out of the loop into new registers. After hoisting, these are then initialized with the value retrieved from the meta data attached earlier. We then proceed to add re-associating  expressions i.e\ the swap instructions between the registers. 
-
-
+\\
 
 \begin{algorithm}
 	\caption{Re-associating expressions}
 	\begin{algorithmic}
-		
-		\STATE Create a basic block above the loop header
+		\STATE \textbf{Input:} Vector of tagged indexed expressions $V$
+		\STATE Create a BasicBlock above the loop header
 		\FOR{\textbf{each} RHS indexed expression}
-		\STATE create a register in the hoisted block
-		\STATE Get initial value of sequence from meta data
-		\STATE load value into register
+		\STATE Create a register in the hoisted block
+		\STATE Get initial value of indexed expression from meta data
+		\STATE Load value into register
 		\ENDFOR
 		
 	\end{algorithmic}
 \end{algorithm}
 
+\newpage
+\subsection{Remove Dead Instructions}
 
+Once all the optimizations are done, we need to find and eliminate all instructions which are now deemed unnecessary. Here, we make use LLVM's advanced Uses and Users APIs to complete the task. \\
 
-
+\begin{algorithm}
+	\caption{Re-associating expressions}
+	\begin{algorithmic}
+		\FOR{\textbf{each} instruction \textbf{in} BasicBlock}
+		\STATE $users \leftarrow getAllUsers(instruction) $
+		\IF {users \textbf{is} empty}
+		\STATE $removeInstruction(instruction)$
+		\STATE $replaceAllUsesWith(undefinedValue)$
+		\ENDIF
+		\ENDFOR
+	\end{algorithmic}
+\end{algorithm}

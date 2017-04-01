@@ -12,20 +12,24 @@
 4. x86 / ARM / amd64 / PowerPC architecture
 \end{verbatim}
 \textbf{Software Requirements}
-\begin{verbatim}
-1) Linux with kernel version > 4 / Cygwin on Windows
-2) GNU Make	3.79, 3.79.1 - Makefile/build processor
-3) GCC	>=4.8.0	C/C++ -  compiler
-4) python	>=2.7 -	Automated test suite
-5) zlib	>=1.2.3.4 -	Compression library 
-6) Standard Linux/Unix build utilities
-\end{verbatim}
+\begin{enumerate}
+\item Linux with kernel version $\ge$ 4 / Cygwin on Windows
+\item GNU Make	3.79, 3.79.1 - Makefile/build processor
+\item GCC	$\le$ 4.8.0	C/C++ -  compiler
+\item python $\le$	2.7 -	Automated test suite
+\item zlib	$\le$ 1.2.3.4 -	Compression library 
+\item Standard Linux/Unix build utilities
+\end{enumerate}
+
+\pagebreak
+
 \textbf{Functional Requirements for the optimization Module}
-\begin{verbatim}
-1) The code that is optimized must be compiled with an additional flag, one for each additional pass
-2) Array access should be inside a loop, with scope for predictive commoning to be applied
-3) The optimized IR representation should have lesser loads and stores, with first iteration having been hoisted out of the loop body, and the remaining loads promoted to registers
-\end{verbatim}
+\\
+\begin{enumerate}
+\item The code that is optimized must be compiled with an additional flag, one for each additional pass
+\item Array access should be inside a loop, with scope for predictive commoning to be applied
+\item The optimized IR representation should have lesser loads and stores, with first iteration having been hoisted out of the loop body, and the remaining loads promoted to registers
+\end{enumerate}
 \subsection{Analysis}
+
 The optimization module, compiled from source at the host with matching CLANG, OPT utilities, should apply the predictive commoning to the input code. LLVM is chosen since it has a reliable class reference superior to it's compiler conterparts. The optimizing passes approach neccesitates that we write three distinct passes that accomplish predictive commoning.  we require a modern host C++ toolchain, both compiler and standard library, in order to build LLVM.
-]
