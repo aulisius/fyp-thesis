@@ -1,13 +1,13 @@
 % Chapter 4
 \chapter{SYSTEM DESIGN} % All Chapter headings in ALL CAPS
 
-\section{Overall Architecture}
+\section{System Architecture}
 The goal of this project is to build a module that facilitates the necessary optimizations pertaining to predictive commoning. This entails a few key modules which are diagrammatically represented in Figure 4.1.
 \newline
 
 \begin{figure}[H]
 	\centering
-	\includegraphics[scale=0.45]{block.png}
+	\includegraphics[scale=0.55]{block.jpg}
 	\caption{Architecture Diagram}
 	\label{ArchDia}	
 \end{figure}
@@ -15,9 +15,26 @@ The goal of this project is to build a module that facilitates the necessary opt
 
 The first module deals with identifying what parts of the code will be targeted for the optimization. The LLVM API provides interfaces to identify and target code i.e.\ it helps to target only loops instead of running through the entire program. \\ 
 
+\section{Software Implementation Flow}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.8]{flow.png}
+	\caption{Software Flow Diagram}
+	\label{Software Flow}	
+\end{figure}
+
+
 This overall architecture can be decomposed into a few highly cohesive modules. Each module is explained in detail in the following section.
 
-\section{Modules}
+\section{List of Modules}
+\begin{enumerate}
+	\item Identifying Computation expressions
+	\item Annotate Computation expressions
+	\item Reassociate Expressions
+\end{enumerate}
+
+\section{Modules split-up and Detailed design}
 \subsection{Identifying computation expressions}
 
 This module is responsible for identification of array indexing operations. It does this by connecting the multiple instructions that make up an indexing expression and grouping them as one basic block.
@@ -58,7 +75,7 @@ Once we have identified the necessary expressions, we then annotate them with us
 		\STATE $dominantLoad \leftarrow findDominantLoad()$
 		
 		\FOR{\textbf{each} instruction \textbf{between} $dominantLoad$ AND $GEPInstruction$}
-		\IF {\textbf{type of}instruction $==$ arithmetic Op}
+		\IF {\textbf{typeof} instruction $==$ arithmetic Op}
 		\IF {operand $==$ constant}
 		\RETURN constant
 		\ENDIF
@@ -108,8 +125,6 @@ The optimization work begins with this phase. We hoist the LHS indexed expressio
 		
 	\end{algorithmic}
 \end{algorithm}
-
-\newpage
 \subsection{Remove Dead Instructions}
 
 Once all the optimizations are done, we need to find and eliminate all instructions which are now deemed unnecessary. Here, we make use LLVM's advanced Uses and Users APIs to complete the task. \\
