@@ -6,7 +6,7 @@
 \subsection{Identifying Computation Expressions}
 \noindent
 \textbf{Input}
-The IR of the unoptimized code is provided as the input to the first pass of the Identifying common expression phase.\newline
+IR of the un-optimized code is provided as input to the first pass of the Identifying common expression phase.\newline
 \hspace{35pt}\textbf{ Output}
 Annotated version of the input code is obtained, with LHS and RHS expressions marked, and the optimizable computations annotated.\newline
 \textbf{Code snippet for re-associating the Expressions}
@@ -86,58 +86,58 @@ Once the two initial passes are done, we eliminate the dead instructions by elim
 
 
 \section{Experimental Results}
-The proposed optimization is used on 4 different test cases. The Relative Improvement Percentage (RIP) is the difference of optimization times between the two versions with and without applying the optimization. The optimization time is defined as the sum of both the compilation time and the running time.
+The proposed optimization is used on 3 different scenarios. The Relative Improvement Percentage (RIP) is the difference of optimization times between the two versions with and without applying the optimization.
 
 \begin{equation*}
 RIP \% = \frac{T_{unoptimized}-T_{optimized}}{T_{optimized}} x 100% 
 \end{equation*}
 
-If  $RIP\%$ is negative,  the  optimization has a negative effect, so it is better to not apply the optimization,
+If  $RIP\%$ is negative,  it is better to not apply the optimization.
 
-We evaluate our optimization with three different test cases which cover most use cases of our optimization
+We evaluate our optimization with three different scenarios which cover most use cases of our optimization
 
 \subsection{Performance Evaluation}
 
-\subsubsection{Test Case 1}
+\subsubsection{Scenario 1}
 
-The Fibonacci sequence is used as the code for this test case. Traditional way of finding Fibonacci includes accessing two array indexes to calculate the successor. 
+In this scenario, we consider two array accesses in one statement. We use the code for calculating the Fibonacci sequence.
 
 The results of applying our optimization are
 
 \begin{figure}[H]
 	%	\centering
-	\includegraphics[scale=0.8]{tc_1.png}
-	\caption{Execution times for TC 1}
+	\includegraphics[scale=0.9]{scenario_1.png}
+	\caption{Execution times for Scenario 1}
 	\label{TC_1}	
 \end{figure}
 
-\subsubsection{Test Case 2}
+\subsubsection{Scenario 2}
 
-The optimization quality is proportional to the number of array accesses in the loop. This is depicted by this use case. 
+The optimization quality is proportional to the number of array accesses in the loop. This is depicted by this scenario which involves only one array access. 
 
 The results of applying our optimization are
 
 \begin{figure}[H]
 	\centering
-	\includegraphics[scale=0.5]{tc_2.png}
-	\caption{Execution times for TC 2}
+	\includegraphics[scale=0.9]{scenario_2.png}
+	\caption{Execution times for Scenario 2}
 	\label{TC_2}	
 \end{figure}
 
-\subsubsection{Test Case 3}
+\subsubsection{Scenario 3}
 
-Not applying the optimization when not needed is also an evaluation of our system. Keeping this in mind, this test case contains code which cannot be optimized.
+Not applying the optimization when not needed is also an evaluation of our system. Therefore, this scenario contains code which cannot be optimized.
 
 The results of applying our optimization are depicted in \ref{TC_3}
 
 \begin{figure}[H]
 	\centering
-	\includegraphics[scale=0.3]{tc_3.png}
-	\caption{Execution times for TC 3}
+	\includegraphics[scale=0.9]{scenario_3.png}
+	\caption{Execution times for Scenario 3}
 	\label{TC_3}	
 \end{figure}
 
-\pagebreak
+%\pagebreak
 
 \subsection{Evaluation}
 
@@ -145,10 +145,12 @@ For each test case, we then find the RIP according to our formula. The results a
 
 \begin{figure}[H]
 	\centering
-	\includegraphics[scale=0.5]{rip.png}
-	\caption{RIP of all test cases}
+	\includegraphics[scale=0.9]{rip_new.png}
+	\caption{RIP of all scenarios}
 	\label{RIP}	
 \end{figure}
+
+\pagebreak
 
 We can deduce the following observations
 
