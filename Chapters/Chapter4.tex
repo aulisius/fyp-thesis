@@ -1,143 +1,187 @@
 % Chapter 4
-\chapter{SYSTEM DESIGN} % All Chapter headings in ALL CAPS
 
-\section{System Architecture}
-The goal of this project is to build a module that facilitates the necessary optimizations pertaining to predictive commoning. This entails a few key modules which are diagrammatically represented in Figure 4.1.
-\newline
+\chapter{IMPLEMENTATION AND RESULTS} % Write in your own chapter title
+
+\section{Implementation}
+\subsection{Identify and annotate computation Expressions}
+\noindent
+\textbf{Input: }
+IR of the un-optimized code is provided as input to the first pass of the Identifying common expression phase.\newline
+\hspace{35pt}\textbf{Output: }
+Annotated version of the input code is obtained, with LHS and RHS expressions marked, and the optimizable computations annotated.\newline
+\textbf{Code snippet for re-associating the Expressions}
+
+\begin{lstlisting}
+void setAllMetadata(BasicBlock *BB) {
+LLVMContext& context = BB->getContext();
+MDBuilder builder(context);
+auto *RHS = MDNode::get(context, builder.createString("RHS"));
+auto *LHS = MDNode::get(context, builder.createString("LHS"));
+auto *deadInst = MDNode::get(context, builder.createString(""));
+...
+auto onlyGEPs = getGEPs(BB);
+...
+\end{lstlisting}
+\newpage
+
+\subsection{Re-associate expressions}
+\noindent
+\textbf{Input:} 
+The annotated IR is sent as input to the reassociating expressions pass.
+
+\noindent
+\textbf{Output:}
+The output IR consists of the first iteration array access hoisted out of the loop. A new basic block is added to apply the predictive commoning to the loop. All the remaining instructions are marked as dead in the IR.\newline
+\textbf{Code snippet for annotating the Expressions}
+\begin{lstlisting}
+IRBuilder<> loopBuilder(lbody, lbody->getFirstInsertionPt());
+int i = 0;
+for (auto it : newAllocs) {
+auto newLoad = loopBuilder.CreateAlignedLoad(it, 4);
+oldLoads[i]->replaceAllUsesWith(newLoad);
+i++;
+}
+i = 0;
+for (auto store: oldStores) {
+auto *user = cast<Instruction>(store->getOperand(0));
+IRBuilder<> tmpLoad(store->getNextNode());
+tmpLoad.CreateAlignedStore(user, tmpStores[i], 4);
+for (auto it = newAllocs.rbegin(); it != newAllocs.rend(); ++it) {
+auto prevInst = tmpLoad.CreateAlignedLoad(*it, 4);
+tmpLoad.CreateAlignedStore(prevInst, *(++it), 4);
+}
+auto prevInst = tmpLoad.CreateAlignedLoad(tmpStores[i], 4);
+tmpLoad.CreateAlignedStore(prevInst, *newAllocs.rbegin(), 4);
+i++;
+}
+
+\end{lstlisting}
+
+\section{Modules}
+\subsection{Identify and annotate computation Expressions}
+The two modules are implemented in three passes, of which the first pass alone constitutes the first module. In the first pass, we iterate through the input IR to find the basic blocks with loops, using the \texttt	{getLoopAnalysisUsage} class. After finding the loop containing block, we iterate through the basic blocks found in that block, to find initial iteration of the loop. We define \texttt{getInitial()} function to get the initial iteration. Upon getting the initial iteration, we check for dominant and dominated expressions. If a basic block inside the loop contains both dominant and dominated load expressions, we set the metadata using the 
+\texttt{setAllMetaData()} function. The \texttt{MDNode::get()} function is used to retrieve the text Metadata node needed to annotate the expresssions, using the \texttt{ setUsersMetadata(dominant, gepIT, deadInst)} function call. These steps are all iteratively done by invoking the \texttt{runOnLoop()} function. 
+
+\subsection{Re-associate expressions and remove dead Instructions}
+The second pass is run on each function, and it hoists the indexed expressions out of the loop and adds a new basic block, to add the swapping instructions at the end. On finding the loop containing blocks, we get the annotations by using the \texttt{instr->getMetadata()} function. 
+
+By ensuring that the annotations are what we require, we create a new basic block, and also hoist the instructions out of the loop. \texttt{builder.CreateAlloca()} function is used to create a new allocation for the hoisted first iteration value. The old loads are collected, and pushed in a vector. Once the new loads with array access eliminated are constructed, all the old loads are replaced with the new loads. 
+
+\texttt{CreateAlignedStore} is used to create the replacing store instructions that will be used as the swapping block at bottom of the loop body. 
+
+\begin{lstlisting}
+IRBuilder<> loopBuilder(lbody, lbody->getFirstInsertionPt());
+int i = 0;
+for (auto it : newAllocs) {
+auto newLoad = loopBuilder.CreateAlignedLoad(it, 4);
+oldLoads[i]->replaceAllUsesWith(newLoad);
+i++;
+}
+
+\end{lstlisting}
+\hspace{55pt} \textbf{Replacing the instructions with IRBuilder}
+
+Once the two initial passes are done, we eliminate the dead instructions by eliminating its uses and then removing it using the \texttt{i->eraseFromParent()} function call.
+
+\section{Testing}
+We test the program for correctness, and non breakage of code that has no potential for optimization. The module is compiled and run on several single source programs in the LLVM test suite \cite{llvmtest}. They run successfully after being compiled with optimization switch, and do not introduce any errors in the generated code. Therefore, the optimized code runs as expected, with the added advantage of shorter execution time. The code with no potential for optimizations is left untouched by the optimization pass. Table \ref{llvmtest} contains all the various programs that the module was tested against, and the effect for optimization.
+
+\begin{table}[]
+	\centering
+	\caption{Test cases}
+	\label{llvmtest}
+	\begin{tabular}{p{6cm}l l l }
+		\toprule
+		\textbf{Test Program from LLVM Suite}        & \textbf{Optimizable}  & \textbf{RIP} & \textbf{Correctness} \\ \midrule
+		Adobe-C++/stepanov\_vector.cpp               & No    & -                & Yes                  \\ \midrule
+		Adobe-C++/benchmark.cpp                      & Yes & 24\% & Yes                  \\ \midrule
+		Adobe-C++/loop\_unroll.cpp                   & No & -                   & Yes                  \\ \midrule
+		Stanford/BubbleSort.cpp                      & No & -                   & Yes                  \\ \midrule
+		Stanford/FloatMM.cpp                         & No & -                   & Yes                  \\ \midrule
+		Stanford/IntMM.c                             & No & -                   & Yes                  \\ \midrule
+		Stanford/Queens.c                            & Yes & 18\% & Yes                  \\ \midrule
+		Stanford/QuickSort.c                         & No  & -                  & Yes                  \\ \midrule
+		Stanford/Towers.c                            & No  & -                   & Yes                  \\ \midrule
+		Stanford/Treesort.c                          & No & -                   & Yes                  \\ \midrule
+		Polybench/linear-algebra/solvers/dynprog     & Yes & 9\%  & Yes                  \\ \midrule
+		Polybench/linear-algebra/solvers/gramschmidt & No  & -                  & Yes                  \\ \midrule
+		Shootout-C++/fibo.cpp                        & Yes & 26\% & Yes                  \\ \midrule
+		Shootout-C++/hash.cpp                        & No  & -                   & Yes                  \\ \bottomrule
+	\end{tabular}
+\end{table}
+
+\pagebreak
+\section{Experimental Results}
+The proposed optimization is used on 3 different scenarios. The Relative Improvement Percentage (RIP) is the difference of optimization times between the two versions with and without applying the optimization.
+
+\begin{equation*}
+\label{rip}
+RIP \% = \frac{T_{unoptimized}-T_{optimized}}{T_{optimized}} x 100% 
+\end{equation*}
+
+If  $RIP\%$ is negative,  it is better to not apply the optimization.
+
+We evaluate our optimization with three different scenarios which cover most use cases of our optimization
+
+\subsection{Performance evaluation}
+
+\subsubsection{Scenario 1}
+
+In this scenario, we consider two array accesses in one statement. We use the code for calculating the Fibonacci sequence.
+
+The results of applying our optimization are shown in Figure \ref{TC_1}
+
+\begin{figure}[H]
+	%	\centering
+	\includegraphics[scale=0.9]{scenario_1.png}
+	\caption{Execution times for Scenario 1}
+	\label{TC_1}	
+\end{figure}
+
+\subsubsection{Scenario 2}
+
+The optimization quality is proportional to the number of array accesses in the loop. This is depicted by this scenario which involves only one array access. 
+
+The results of applying our optimization are shown in Figure \ref{TC_2}
 
 \begin{figure}[H]
 	\centering
-	\includegraphics[scale=0.55]{block.jpg}
-	\caption{Architecture Diagram}
-	\label{ArchDia}	
+	\includegraphics[scale=0.9]{scenario_2.png}
+	\caption{Execution times for Scenario 2}
+	\label{TC_2}	
 \end{figure}
 
+\subsubsection{Scenario 3}
 
-The first module deals with identifying what parts of the code will be targeted for the optimization. The LLVM API provides interfaces to identify and target code i.e.\ it helps to target only loops instead of running through the entire program. \\ 
+Not applying the optimization when not needed is also an evaluation of our system. Therefore, this scenario contains code which cannot be optimized.
 
-\section{Software Implementation Flow}
+The results of applying our optimization are depicted in \ref{TC_3}
 
 \begin{figure}[H]
 	\centering
-	\includegraphics[scale=0.8]{flow.png}
-	\caption{Software Flow Diagram}
-	\label{Software Flow}	
+	\includegraphics[scale=0.9]{scenario_3.png}
+	\caption{Execution times for Scenario 3}
+	\label{TC_3}	
 \end{figure}
 
+%\pagebreak
 
-This overall architecture can be decomposed into a few highly cohesive modules. Each module is explained in detail in the following section.
+\subsection{Evaluation}
 
-\section{List of Modules}
+For each scenario, we then find the RIP according to formula specified in \ref{rip}. The results are below 
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.9]{rip_new.png}
+	\caption{RIP of all scenarios}
+	\label{RIP}	
+\end{figure}
+
+\pagebreak
+
+We can deduce the following observations
+
 \begin{enumerate}
-	\item Identifying Computation expressions
-	\item Annotate Computation expressions
-	\item Reassociate Expressions
+	\item The performance is directly proportional to the number of array accesses present in the loop.
+	\item There is no improvement or deterioration when the optimization is not applicable. 
 \end{enumerate}
-
-\section{Modules split-up and Detailed design}
-\subsection{Identifying computation expressions}
-
-This module is responsible for identification of array indexing operations. It does this by connecting the multiple instructions that make up an indexing expression and grouping them as one basic block.
-
-It repeats the process for all the instructions and returns a list of such expressions.
-
-\begin{algorithm}
-	\caption{Identifying indexed sequences}
-	\begin{algorithmic}
-		\STATE $V \leftarrow$ Empty vector
-		\FOR{\textbf{each} $getElementPtrInst$}
-		\STATE $dominantLoad \leftarrow findDominantLoad()$
-		\STATE $dominatedLoad \leftarrow findDominatedLoad()$
-		\IF {$dominantLoad \neq $ null AND $dominatedLoad \neq $ null}
-		\STATE $V.push(indexed expressions)$
-		\ENDIF
-		\ENDFOR
-		\RETURN $V$
-	\end{algorithmic}
-\end{algorithm}
-
-
-\subsection{Annotate Computation Expressions}
-
-Once we have identified the necessary expressions, we then annotate them with useful meta data. It is one of the ways through which information is sent across passes. We use this to tag two pieces of meta data, namely
-
-\begin{itemize}
-	\item Type of indexed expression
-	\item Initial value of an indexed expression
-\end{itemize}
-
-
-\begin{algorithm}
-	\caption{Initial value calculation}
-	\begin{algorithmic}
-		
-		\FOR{\textbf{each} $GEPInstruction$}
-		\STATE $dominantLoad \leftarrow findDominantLoad()$
-		
-		\FOR{\textbf{each} instruction \textbf{between} $dominantLoad$ AND $GEPInstruction$}
-		\IF {\textbf{typeof} instruction $==$ arithmetic Op}
-		\IF {operand $==$ constant}
-		\RETURN constant
-		\ENDIF
-		\ENDIF
-		\RETURN 0
-		\ENDFOR
-		\ENDFOR
-		
-	\end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}
-	\caption{Annotate computation expressions}
-	\begin{algorithmic}
-		
-		\STATE \textbf{Input:} Vector of indexed expressions $V$
-		
-		\FOR{\textbf{each} indexed expression \textbf{in} $V$}
-		\STATE $node \leftarrow getSuccessor()$
-		
-		\IF {\textbf{typeof} node $==$ load}
-		\STATE Tag as LHS
-		\STATE $initialValue \leftarrow getIntialValue()$
-		\STATE Tag initialValue to indexed expression
-		\ENDIF
-		\ENDFOR
-		\RETURN V
-		
-	\end{algorithmic}
-\end{algorithm}
-
-\subsection{Reassociate Expressions}
-
-The optimization work begins with this phase. We hoist the LHS indexed expressions out of the loop into new registers. After hoisting, these are then initialized with the value retrieved from the meta data attached earlier. We then proceed to add re-associating  expressions i.e\ the swap instructions between the registers. 
-\\
-
-\begin{algorithm}
-	\caption{Re-associating expressions}
-	\begin{algorithmic}
-		\STATE \textbf{Input:} Vector of tagged indexed expressions $V$
-		\STATE Create a BasicBlock above the loop header
-		\FOR{\textbf{each} RHS indexed expression}
-		\STATE Create a register in the hoisted block
-		\STATE Get initial value of indexed expression from meta data
-		\STATE Load value into register
-		\ENDFOR
-		
-	\end{algorithmic}
-\end{algorithm}
-\subsection{Remove Dead Instructions}
-
-Once all the optimizations are done, we need to find and eliminate all instructions which are now deemed unnecessary. Here, we make use LLVM's advanced Uses and Users APIs to complete the task. \\
-
-\begin{algorithm}
-	\caption{Re-associating expressions}
-	\begin{algorithmic}
-		\FOR{\textbf{each} instruction \textbf{in} BasicBlock}
-		\STATE $users \leftarrow getAllUsers(instruction) $
-		\IF {users \textbf{is} empty}
-		\STATE $removeInstruction(instruction)$
-		\STATE $replaceAllUsesWith(undefinedValue)$
-		\ENDIF
-		\ENDFOR
-	\end{algorithmic}
-\end{algorithm}

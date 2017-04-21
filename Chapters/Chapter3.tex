@@ -1,35 +1,139 @@
 % Chapter 3
+\chapter{SYSTEM DESIGN} % All Chapter headings in ALL CAPS
 
-\chapter{REQUIREMENTS ANALYSIS} % All Chapter Headings in ALL CAPS
+\section{System Architecture}
+The goal of this project is to build a module that facilitates the necessary optimizations pertaining to predictive commoning. This entails a few key modules which are diagrammatically represented in Figure \ref{ArchDia}
+\newline
 
-\section{Requirements}
-\subsection{LLVM}
-\textbf{Hardware Requirements}
-\begin{verbatim}
-1. Disk space of 15-20 GB for Debug build of LLVM and CLANG
-2. Pentium or up processor
-3. 32-bit ABI capable processor
-4. x86 / ARM / amd64 / PowerPC architecture
-\end{verbatim}
-\textbf{Software Requirements}
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.55]{block.jpg}
+	\caption{Architecture Diagram}
+	\label{ArchDia}	
+\end{figure}
+
+
+The first module deals with identifying what parts of the code will be targeted for the optimization. LLVM API provides interfaces to identify and target code i.e.\ it helps to target only loops instead of running through the entire program. \\ 
+
+\section{Software Implementation Flow}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.75]{flow.png}
+	\caption{Software Flow Diagram}
+	\label{Software Flow}	
+\end{figure}
+
+
+This overall architecture can be decomposed into a few highly cohesive modules. Each module is explained in detail in the following section.
+
+\section{List of Modules}
 \begin{enumerate}
-\item Linux with kernel version $\ge$ 4 / Cygwin on Windows
-\item GNU Make	3.79, 3.79.1 - Makefile/build processor
-\item GCC	$\le$ 4.8.0	C/C++ -  compiler
-\item python $\le$	2.7 -	Automated test suite
-\item zlib	$\le$ 1.2.3.4 -	Compression library 
-\item Standard Linux/Unix build utilities
+	\item Identify and annotate computation Expressions
+%	\item Annotate Computation expressions
+	\item Re-associate Expressions and remove dead Instructions
 \end{enumerate}
 
-\pagebreak
+\section{Modules split-up and Detailed design}
+\subsection{Identify and annotate computation Expressions}
 
-\textbf{Functional Requirements for the optimization Module}
+This module is responsible for identification of array indexing operations. It does this by connecting the multiple instructions that make up an indexing expression and grouping them as one basic block.
+
+It repeats the process for all the instructions and returns a list of such expressions.
+
+\begin{algorithm}
+	\caption{Identifying indexed sequences}
+	\begin{algorithmic}
+		\STATE $V \leftarrow$ Empty vector
+		\FOR{\textbf{each} $getElementPtrInst$}
+		\STATE $dominantLoad \leftarrow findDominantLoad()$
+		\STATE $dominatedLoad \leftarrow findDominatedLoad()$
+		\IF {$dominantLoad \neq $ null AND $dominatedLoad \neq $ null}
+		\STATE $V.push(indexed expressions)$
+		\ENDIF
+		\ENDFOR
+		\RETURN $V$
+	\end{algorithmic}
+\end{algorithm}
+
+Once we have identified the necessary expressions, we then annotate them with useful meta data. It is one of the ways through which information is sent across passes. We use this to tag two pieces of meta data, namely
+
+\begin{itemize}
+	\item Type of indexed expression
+	\item Initial value of an indexed expression
+\end{itemize}
+
+
+\begin{algorithm}
+	\caption{Initial value calculation}
+	\begin{algorithmic}
+		
+		\FOR{\textbf{each} $GEPInstruction$}
+		\STATE $dominantLoad \leftarrow findDominantLoad()$
+		
+		\FOR{\textbf{each} instruction \textbf{between} $dominantLoad$ AND $GEPInstruction$}
+		\IF {\textbf{typeof} instruction $==$ arithmetic Op}
+		\IF {operand $==$ constant}
+		\RETURN constant
+		\ENDIF
+		\ENDIF
+		\RETURN 0
+		\ENDFOR
+		\ENDFOR
+		
+	\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+	\caption{Annotate computation expressions}
+	\begin{algorithmic}
+		
+		\STATE \textbf{Input:} Vector of indexed expressions $V$
+		
+		\FOR{\textbf{each} indexed expression \textbf{in} $V$}
+		\STATE $node \leftarrow getSuccessor()$
+		
+		\IF {\textbf{typeof} node $==$ load}
+		\STATE Tag as LHS
+		\STATE $initialValue \leftarrow getIntialValue()$
+		\STATE Tag initialValue to indexed expression
+		\ENDIF
+		\ENDFOR
+		\RETURN V
+		
+	\end{algorithmic}
+\end{algorithm}
+
+\subsection{Re-associate expressions and remove dead Instructions}
+
+The optimization work begins with this phase. We hoist the RHS indexed expressions out of the loop into new registers. After hoisting, these are then initialized with the value retrieved from the meta data attached earlier. We then proceed to add re-associating  expressions i.e\ the swap instructions between the registers. 
 \\
-\begin{enumerate}
-\item The code that is optimized must be compiled with an additional flag, one for each additional pass
-\item Array access should be inside a loop, with scope for predictive commoning to be applied
-\item The optimized IR representation should have lesser loads and stores, with first iteration having been hoisted out of the loop body, and the remaining loads promoted to registers
-\end{enumerate}
-\subsection{Analysis}
 
-The optimization module, compiled from source at the host with matching CLANG, OPT utilities, should apply the predictive commoning to the input code. LLVM is chosen since it has a reliable class reference superior to it's compiler conterparts. The optimizing passes approach neccesitates that we write three distinct passes that accomplish predictive commoning.  we require a modern host C++ toolchain, both compiler and standard library, in order to build LLVM.
+\begin{algorithm}
+	\caption{Re-associating expressions}
+	\begin{algorithmic}
+		\STATE \textbf{Input:} Vector of tagged indexed expressions $V$
+		\STATE Create a BasicBlock above the loop header
+		\FOR{\textbf{each} RHS indexed expression}
+		\STATE Create a register in the hoisted block
+		\STATE Get initial value of indexed expression from meta data
+		\STATE Load value into register
+		\ENDFOR
+		
+	\end{algorithmic}
+\end{algorithm}
+
+Once all the optimizations are done, we need to find and eliminate all instructions which are now deemed unnecessary. Here, we make use LLVM's advanced Uses and Users APIs to complete the task. \\
+
+\begin{algorithm}
+	\caption{Re-associating expressions}
+	\begin{algorithmic}
+		\FOR{\textbf{each} instruction \textbf{in} BasicBlock}
+		\STATE $users \leftarrow getAllUsers(instruction) $
+		\IF {users \textbf{is} empty}
+		\STATE $removeInstruction(instruction)$
+		\STATE $replaceAllUsesWith(undefinedValue)$
+		\ENDIF
+		\ENDFOR
+	\end{algorithmic}
+\end{algorithm}
